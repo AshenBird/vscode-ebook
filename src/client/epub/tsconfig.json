@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "jsx": "preserve",
+    "strict": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "rootDir": "./",
+    "outDir": "../../out/client/epub",
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "DOM","DOM.Iterable"
+    ],
+    "types": [
+      "node","vite/client"
+    ]
+  },
+  "exclude": []
+}
