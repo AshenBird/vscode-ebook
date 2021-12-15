@@ -1,15 +1,11 @@
 import {
   CancellationToken,
-  // CustomTextEditorProvider,
   CustomReadonlyEditorProvider,
   CustomDocument,
   CustomDocumentOpenContext,
-  Range,
-  TextDocument,
   WebviewPanel,
   window,
   workspace,
-  WorkspaceEdit,
   Uri,
   Disposable,
   Webview,
@@ -107,33 +103,10 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
       enableScripts: true,
     };
 
-    this.listen(document, webviewPanel, "editor");
+    this.listen(document, webviewPanel);
 
     webviewPanel.webview.html = await this.createHTML(document, webviewPanel);
   }
-
-  // public async createAsWebviewPanel(document: CustomDocument) {
-  //   const uri = document.uri.toString();
-  //   if (!this.storage.has(uri)) {
-  //     this.storage.set(uri, {
-  //       content: "",
-  //       lock: false,
-  //     });
-  //   }
-  //   const panel = window.createWebviewPanel(
-  //     "mcswift.epub",
-  //     document.fileName,
-  //     -1,
-  //     {
-  //       retainContextWhenHidden: true,
-  //       enableFindWidget: true,
-  //       enableScripts: true,
-  //     }
-  //   );
-  //   panel.webview.html = await this.createHTML(document, panel);
-  //   this.listen(document, panel, "webview");
-  //   return panel;
-  // }
   /**
    * 创建 html 文件
    * @param document
@@ -168,7 +141,6 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
   private listen(
     document: EpubDocument,
     webviewPanel: WebviewPanel,
-    mode: "webview" | "editor"
   ) {
     const uri = document.uri.toString();
     const store = this.storage.get(uri) as DocStore;
@@ -176,7 +148,6 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
     // 监听 webview
     webviewPanel.webview.onDidReceiveMessage(({ type, content }: Message) => {
       const actions = {
-        // change: this.updateDocument.bind(this),
         ready: () => {
           store.lock = false;
           store.content = null;
@@ -184,41 +155,10 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
           this.sendConfig(document, webviewPanel.webview);
           return;
         },
-        // save: ()=>{
-        //   if(mode==="editor"){return;}
-        //   document.save();
-        // }
       };
       actions[type]();
     });
 
-    // 监听 文档变更时间
-    // const changeDocumentSubscription = workspace.onDidChangeTextDocument(
-    //   async (e) => {
-    //     const uri = document.uri.toString();
-    //     const store = this.storage.get(uri) as DocStore;
-
-    //     // 当前视图造成的变更
-    //     if (store.lock) {
-    //       store.lock = false;
-    //       return;
-    //     }
-
-    //     // 不是当前文档的变更
-    //     if (e.document !== document) {
-    //       return;
-    //     }
-
-    //     // Sometimes VS Code reports a document change without a change.
-    //     // 没有发生实际变更的
-    //     if (e.contentChanges.length === 0) {
-    //       return;
-    //     }
-
-    //     // 发生变更时就发送数据
-    //     this.sendContent(document, webviewPanel.webview);
-    //   }
-    // );
 
     // 主题改变的监听
     const themeChangeSub = window.onDidChangeActiveColorTheme(() => {
@@ -228,7 +168,6 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
     });
     // dispose 监听
     webviewPanel.onDidDispose(() => {
-      // changeDocumentSubscription.dispose();
       themeChangeSub.dispose();
     });
   }
@@ -246,7 +185,6 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
         3: "highContrast", //HighContrast
       }[window.activeColorTheme.kind],
       uri: document.uri.toString(),
-      // eol: { 1: "LF", 2: "CRLF" }[document.eol],
       mode: "edit",
     };
     webview.postMessage({
@@ -262,40 +200,10 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
    * @returns
    */
   private sendContent(document: EpubDocument, webview: Webview) {
-    // const text = document.getText();
-    const uri = document.uri;//.toString();
-    // const store = this.storage.get(uri) as DocStore;
-
-    // if (text === store.content) {
-    //   return;
-    // }
-    const content = Array.from(document.content);
+    const uri = webview.asWebviewUri(document.uri).toString();
     webview.postMessage({
       type: "change",
-      uri:webview.asWebviewUri(uri).toString(),
-      raw:document.content,
-      content
-      // text//: text.replace(/\r\n/g, "\n"),
+      uri,
     });
   }
-
-  // 更新文档
-  // private async updateDocument(content: string, document: CustomDocument) {
-  //   const uri = document.uri.toString();
-  //   const store = this.storage.get(uri) as DocStore;
-  //   store.lock = true;
-  //   const text = document.getText();
-  //   if (text === content) {
-  //     return;
-  //   }
-  //   store.content = content;
-  //     // document.eol === 2 ? content.replace(/\n/g, "\r\n") : content;
-  //   const workspaceEdit = new WorkspaceEdit();
-  //   workspaceEdit.replace(
-  //     document.uri,
-  //     new Range(0, 0, document.lineCount, 0),
-  //     store.content
-  //   );
-  //   workspace.applyEdit(workspaceEdit);
-  // }
 }

@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { ref, provide, computed, watchEffect, watch, onMounted } from "vue";
-import { NConfigProvider, darkTheme } from "naive-ui";
+import {
+  ref,
+  computed,
+  watch,
+  shallowRef,
+} from "vue";
+import { NConfigProvider, darkTheme, NSpin } from "naive-ui";
 import { useVscode } from "./useVscode";
+import { Book, Rendition } from "epubjs";
+import ePub from "epubjs";
 // @ts-ignore
-import epub from "epubjs/dist/epub";
-import { Book } from "epubjs";
-const { config, ready, content,uri } = useVscode();
+import InlineView from "epubjs/src/managers/views/inline";
+const { config, ready, uri } = useVscode();
+
+
+ready.value = true;
 
 const readonly = ref(config.value.mode === "read");
 
@@ -14,41 +23,107 @@ const theme = computed(() =>
   config.value.theme === "dark" ? darkTheme : null
 );
 
-const save = () => {};
+class CustomView extends InlineView {
+  constructor(...args: any[]) {
+    super(...args);
+    // @ts-ignore
+    this._width = this.settings.width;
+    // @ts-ignore
+    this.width = function () {
+      // @ts-ignore
+      return this._width;
+    }.bind(this);
+  }
+}
 
-let book = ref<Book | undefined>();
-watch(content, async (n, o) => {
-  // console.log(n)
-  // const zip = await JSZip.loadAsync(n.data,{})
-  
-  // zip.forEach((p,item)=>{
-  //   console.log(p)
-  // })
-  // book.value = new epub.Book();
-  // book.value?.open(n.data,"binary")
-  // book.value?.renderTo("Book", { flow: "scrolled-doc" });
-  // console.log("aaaa")
+const book = shallowRef<Book | undefined>();
+const renderer = shallowRef<Rendition | undefined>();
+const rendered = ref(false);
+const defaultStyle = document.getElementById("_defaultStyles")
+  ?.innerHTML as string;
+const htmlStyle = document.querySelector("html")?.getAttribute("style") || "";
+
+const onScroll = (e: WheelEvent) => {
+  if (!rendered.value) return;
+  if (e.deltaY > 0) {
+    // 下一页
+    renderer.value?.next(); //.then(mountScroll);
+    return;
+  }
+  // 上一页
+  renderer.value?.prev(); //.then(mountScroll);
+};
+
+const mountScroll = () => {
+  const target = window.frames[0]?.document;
+  target?.addEventListener("wheel", onScroll as EventListener);
+
+  (target.querySelector("html") as HTMLHtmlElement).setAttribute(
+    "style",
+    htmlStyle
+  );
+  const style = document.createElement("style");
+  style.innerHTML = defaultStyle
+  + `
+    html{
+      font-family: v-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
+    p {
+      letter-spacing: 1px;
+      line-height: 1.5;
+    }
+    html body svg{
+      width:unset;
+      max-width:unset !important;
+      height:unset;
+      max-height:unset !important;
+    }
+    html body img{
+      width: unset !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+    }
+    tr{
+      background-color: transparent !important;
+    }
+    td{
+      border: var(--vscode-foreground) solid 1px !important;
+    }
+  `;
+  target.head.appendChild(style);
+
+  console.log(renderer.value?.adjustImages)
+};
+const removeWatch = watch(uri, async (n, o) => {
+  if(!n)return;
+  // @ts-ignore
+  book.value = ePub(n, { encoding: "binary" }) as Book;
+  const r = book.value?.renderTo("Book", {
+    flow: "paginated",
+  });
+  if (r) {
+    renderer.value = r;
+    r.hooks.render.register(mountScroll);
+    await renderer.value.display();
+    rendered.value = true;
+    
+    removeWatch();
+  }
+},{
+  immediate:true
 });
-
-watch(uri, (n, o) => {
-  book.value = epub(n, {encoding:"binary"});
-  
-  const m = book.value?.renderTo("Book", { flow: "scrolled-doc" });
-  console.log(m)
-  // console.log(m?.views())
-  // book.value?.
-  // console.log("aaa")
-});
-
-onMounted(() => {
-  ready.value = true;
-});
-
-// // 注入
-// provide("readonly", readonly);
 </script>
 <template>
-  <n-config-provider :theme="theme" @keyup.ctrl.s="save">
-    <div id="Book" style="height:100vh"></div>
-  </n-config-provider>
+  <div>
+    <n-config-provider :theme="theme">
+      <n-spin :show="!rendered">
+        <div id="Book" style="height: 100vh" @wheel="onScroll"></div>
+      </n-spin>
+    </n-config-provider>
+  </div>
 </template>
+<style lang="scss">
+
+
+
+</style>

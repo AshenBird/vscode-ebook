@@ -1,9 +1,9 @@
-import { createApp } from "vue";
+
+import { ViteSSG } from 'vite-ssg/single-page';
 import App from "./App.vue";
 import "./assets/style/index.scss";
-// @ts-ignore
 
-const el = document.getElementById("app") as HTMLElement;
+export const createApp = ViteSSG(
+  App
+);
 
-
-createApp(App).mount(el);
