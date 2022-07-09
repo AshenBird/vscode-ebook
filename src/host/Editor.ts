@@ -183,6 +183,7 @@ export class EpubEditorProvider implements CustomReadonlyEditorProvider {
         1: "light",
         2: "dark",
         3: "highContrast", //HighContrast
+        4: ""
       }[window.activeColorTheme.kind],
       uri: document.uri.toString(),
       mode: "edit",

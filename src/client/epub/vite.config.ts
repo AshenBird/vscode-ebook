@@ -17,11 +17,16 @@ export default defineConfig({
     //   transformMixedEsModules: true,
     //   include: /node_modules/
     // },
+    rollupOptions:{
+      external:[
+        
+      ]
+    }
   },
   optimizeDeps:{
     esbuildOptions:{
       plugins:[
-        esbuildCommonjs(["epubjs"])
+        // esbuildCommonjs(["epubjs"])
       ]
     }
   },
@@ -31,7 +36,8 @@ export default defineConfig({
   // @ts-ignore
   ssgOptions: {
     mock: true,
-    entry: "index.js"
+    entry: "index.ts",
+    format: 'cjs'
   },
   resolve: {
     // 别名
